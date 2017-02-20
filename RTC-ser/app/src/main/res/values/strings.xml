@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Video Server</string>
+    <string name="host">192.168.2.103</string>
+    <string name="port">3000</string>
+    <string name="action_settings">Options</string>
+
+    <string name="RESOURCE">1</string>
+
+    <string name="RESOURCE2">2</string>
+
+    <string name="RESOURCE3">确定</string>
+
+    <string name="RESOURCE4">取消</string>
+    <string name="p2p_off_warning">Enable P2P from action bar button above or system settings</string>
+
+</resources>
