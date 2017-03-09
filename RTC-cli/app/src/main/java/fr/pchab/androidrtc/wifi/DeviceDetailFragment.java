@@ -108,7 +108,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
                     @Override
                     public void onClick(View v) {
-//                        ((DeviceListFragment.DeviceActionListener) getActivity()).disconnect();
+                        ((DeviceListFragment.DeviceActionListener) getActivity()).disconnect();
                         EventBus.getDefault().post(new TurnEvent("end"));
 
                     }
