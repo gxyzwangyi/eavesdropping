@@ -48,8 +48,10 @@ import java.net.Socket;
 
 import fr.pchab.androidrtc.R;
 import fr.pchab.androidrtc.dao.AnswerEvent;
+import fr.pchab.androidrtc.dao.DialogEvent;
 import fr.pchab.androidrtc.dao.StartEvent;
 import fr.pchab.androidrtc.dao.StopEvent;
+import fr.pchab.androidrtc.dao.TurnEvent;
 
 /**
  * A fragment that manages a particular peer and allows interaction with device
@@ -76,6 +78,10 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
             @Override
             public void onClick(View v) {
+
+
+                EventBus.getDefault().post(new DialogEvent("camera"));
+
                 WifiP2pConfig config = new WifiP2pConfig();
                 config.deviceAddress = device.deviceAddress;
                 config.wps.setup = WpsInfo.PBC;
@@ -102,7 +108,9 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
                     @Override
                     public void onClick(View v) {
-                        ((DeviceListFragment.DeviceActionListener) getActivity()).disconnect();
+//                        ((DeviceListFragment.DeviceActionListener) getActivity()).disconnect();
+                        EventBus.getDefault().post(new TurnEvent("end"));
+
                     }
                 });
 
@@ -128,6 +136,20 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
                     }
                 });
+
+        mContentView.findViewById(R.id.btn_turn_client).setOnClickListener(
+                new View.OnClickListener() {
+
+                    @Override
+                    public void onClick(View v) {
+                        EventBus.getDefault().post(new TurnEvent("turn"));
+
+
+                    }
+                });
+
+
+
 
         return mContentView;
     }
@@ -181,6 +203,10 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
             // get file button.
             mContentView.findViewById(R.id.btn_start_client).setVisibility(View.VISIBLE);
             mContentView.findViewById(R.id.btn_end_client).setVisibility(View.VISIBLE);
+//            mContentView.findViewById(R.id.btn_turn_client).setVisibility(View.VISIBLE);
+
+
+
 
 //            ((TextView) mContentView.findViewById(R.id.status_text)).setText(getResources()
 //                    .getString(R.string.client_text));

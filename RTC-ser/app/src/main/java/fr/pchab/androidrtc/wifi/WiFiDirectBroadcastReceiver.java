@@ -47,6 +47,7 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
         this.manager = manager;
         this.channel = channel;
         this.service = service;
+
     }
 
 
@@ -57,7 +58,7 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
 
 
         } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
-            EventBus.getDefault().post(new PeerEvent("p2p search"));
+           EventBus.getDefault().post(new PeerEvent("p2p search"));
 
 
         } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {

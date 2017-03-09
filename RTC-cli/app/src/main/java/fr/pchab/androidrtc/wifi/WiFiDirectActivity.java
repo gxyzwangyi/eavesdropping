@@ -17,8 +17,12 @@
 package fr.pchab.androidrtc.wifi;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Point;
@@ -57,13 +61,16 @@ import java.util.List;
 import fr.pchab.androidrtc.R;
 import fr.pchab.androidrtc.ServerlessRTCClient;
 import fr.pchab.androidrtc.dao.AnswerEvent;
+import fr.pchab.androidrtc.dao.DialogEvent;
 import fr.pchab.androidrtc.dao.MakeEvent;
 import fr.pchab.androidrtc.dao.StartEvent;
 import fr.pchab.androidrtc.dao.StopEvent;
+import fr.pchab.androidrtc.dao.TurnEvent;
 import fr.pchab.webrtcclient.PeerConnectionParameters;
 import rx.Subscriber;
 
 import static android.R.id.message;
+import static android.R.id.progress;
 
 /**
  * An activity that uses WiFi Direct APIs to discover and connect with available
@@ -86,6 +93,7 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     private BroadcastReceiver receiver = null;
 
     private WifiP2pInfo info;
+    ProgressDialog m_pDialog;
 
     private static final String VIDEO_CODEC_VP8 = "VP8";
 
@@ -93,7 +101,7 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     // Local preview screen position before call is connected.
 
     public Subscriber<String> mySubscriber;
-
+    int  m_count;
     // Remote video screen position
     private static final int REMOTE_X = 0;
     private static final int REMOTE_Y = 0;
@@ -104,8 +112,8 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     private VideoRenderer.Callbacks localRender;
     private VideoRenderer.Callbacks remoteRender;
 
-    public  ServerlessRTCClient p2p_client;
-
+    public ServerlessRTCClient p2p_client;
+    public String flag="0";
     /**
      * @param isWifiP2pEnabled the isWifiP2pEnabled to set
      */
@@ -133,7 +141,6 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
 //        requestWindowFeature(Window.FEATURE_NO_TITLE);
 
 
-
         if (!isWifiP2pEnabled) {
             Log.e("aaa", "off wifi");
 
@@ -153,7 +160,7 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
         VideoRendererGui.setView(vsv, new Runnable() {
             @Override
             public void run() {
-                Log.e("run1","");
+                Log.e("run1", "");
                 init();
             }
         });
@@ -167,41 +174,30 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
         find_peer();
 
 
-
     }
-
-
-
-
-
-
 
 
     private void init() {
         Point displaySize = new Point();
         getWindowManager().getDefaultDisplay().getSize(displaySize);
 
-        Log.e("run","");
+        Log.e("run", "");
         PeerConnectionParameters params = new PeerConnectionParameters(
                 true, false, 1280, 720, 30, 1, VIDEO_CODEC_VP8, true, 1, AUDIO_CODEC_OPUS, true);
 
 
-        p2p_client = new ServerlessRTCClient(this,params,VideoRendererGui.getEGLContext());
+        p2p_client = new ServerlessRTCClient(this, params, VideoRendererGui.getEGLContext());
 
         p2p_client.init();
 
     }
 
 
-
-
-
-
     @Override
     public void onAddRemoteStream(MediaStream remoteStream) {
-        Log.e("!!!",remoteStream.label());
-        Log.e("!!!",remoteStream.videoTracks.toString());
-        Log.e("!!!",remoteStream.toString());
+        Log.e("!!!", remoteStream.label());
+        Log.e("!!!", remoteStream.videoTracks.toString());
+        Log.e("!!!", remoteStream.toString());
 
 
         remoteStream.videoTracks.get(0).addRenderer(new VideoRenderer(remoteRender));
@@ -226,15 +222,12 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
         startActivity(home);
     }
 
-    public void onStateChanged( ServerlessRTCClient.State state) {
+    public void onStateChanged(ServerlessRTCClient.State state) {
 
     }
 
 
-
-
-
-    public void find_peer(){
+    public void find_peer() {
 
 
         manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
@@ -242,7 +235,7 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
             public void onSuccess() {
                 Toast.makeText(WiFiDirectActivity.this, "Discovery Initiated",
                         Toast.LENGTH_SHORT).show();
-                Log.d("size", peers.size()+"");
+                Log.d("size", peers.size() + "");
 
 
                 manager.requestPeers(channel, peerListListener);
@@ -259,7 +252,6 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     }
 
 
-
     private WifiP2pManager.PeerListListener peerListListener = new WifiP2pManager.PeerListListener() {
         @Override
         public void onPeersAvailable(WifiP2pDeviceList peerList) {
@@ -270,10 +262,9 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
 
             if (peers.size() == 0) {
                 Log.e("peer", "No devices found");
-            }
-            else {
+            } else {
 
-                    manager.requestConnectionInfo(channel, connectionInfoListener);
+                manager.requestConnectionInfo(channel, connectionInfoListener);
 
 
             }
@@ -282,12 +273,11 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     };
 
 
-
-    private WifiP2pManager.ConnectionInfoListener connectionInfoListener = new  WifiP2pManager.ConnectionInfoListener(){
+    private WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
         public void onConnectionInfoAvailable(final WifiP2pInfo info1) {
             info = info1;
-            Log.d("bbbb",info1.toString() );
+            Log.d("bbbb", info1.toString());
             WifiP2pDevice device = peers.get(0);
             WifiP2pConfig config = new WifiP2pConfig();
             config.deviceAddress = device.deviceAddress;
@@ -298,10 +288,9 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     };
 
 
-
-
-
-    /** register the BroadcastReceiver with the intent values to be matched */
+    /**
+     * register the BroadcastReceiver with the intent values to be matched
+     */
     @Override
     public void onResume() {
         super.onResume();
@@ -321,9 +310,6 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
         EventBus.getDefault().unregister(this);
 
     }
-
-
-
 
 
     /**
@@ -362,6 +348,7 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
                 if (manager != null && channel != null) {
 
                     SendsdpService();
+                    progressdialog();
 
                 } else {
                     Log.e(TAG, "channel or manager is null");
@@ -417,15 +404,11 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
 
             @Override
             public void onFailure(int reason) {
-                Toast.makeText(WiFiDirectActivity.this, "Connect failed. Retry."+reason,
+                Toast.makeText(WiFiDirectActivity.this, "Connect failed. Retry." + reason,
                         Toast.LENGTH_SHORT).show();
             }
         });
     }
-
-
-
-
 
 
     @Override
@@ -439,6 +422,7 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
             public void onFailure(int reasonCode) {
                 Log.d(TAG, "Disconnect failed. Reason :" + reasonCode);
             }
+
             @Override
             public void onSuccess() {
                 fragment.getView().setVisibility(View.GONE);
@@ -461,6 +445,7 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
                     Toast.LENGTH_LONG).show();
         }
     }
+
     @Override
     public void cancelDisconnect() {
 
@@ -493,46 +478,148 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
-    public void makeEventBus(MakeEvent makeEvent){
-        String message=makeEvent.name;
-        Log.e("make",message.toString());
+    public void makeEventBus(MakeEvent makeEvent) {
+        String message = flag+makeEvent.name;
+        Log.e("make", message.toString());
 
         Intent serviceIntent = new Intent(WiFiDirectActivity.this, NewService.class);
         serviceIntent.putExtra(NewService.EXTRAS,
                 "192.168.49.1");
-        serviceIntent.putExtra("p2p",message);
+        serviceIntent.putExtra("p2p", message);
         WiFiDirectActivity.this.startService(serviceIntent);
 
     }
 
-    public void SendsdpService(){
+    public void SendsdpService() {
         p2p_client.makeOffer();
     }
+
     @Subscribe(threadMode = ThreadMode.MAIN)
-    public void answerEventBus(AnswerEvent answerEvent){
-        String message=answerEvent.name;
-        Log.e("answer",message.toString());
+    public void answerEventBus(AnswerEvent answerEvent) {
+        String message = answerEvent.name;
+        Log.e("answer", message.toString());
         p2p_client.processAnswer(message);
 
     }
 
 
-
-
-
     @Subscribe(threadMode = ThreadMode.MAIN)
-    public void startEventBus(StartEvent startEvent){
-        String message=startEvent.name;
-        Log.e("start",message.toString());
+    public void startEventBus(StartEvent startEvent) {
+        String message = startEvent.name;
+        Log.e("start", message.toString());
         p2p_client.sendMessage(message);
     }
 
 
     @Subscribe(threadMode = ThreadMode.MAIN)
-    public void stopEventBus(StopEvent stopEvent){
-        String message=stopEvent.name;
-        Log.e("stop",message.toString());
+    public void stopEventBus(StopEvent stopEvent) {
+        String message = stopEvent.name;
+        Log.e("stop", message.toString());
         p2p_client.sendMessage(message);
+
+    }
+
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void turnEventBus(TurnEvent turnEvent) {
+        String message = turnEvent.name;
+        Log.e("turn", message.toString());
+        p2p_client.sendMessage(message);
+
+    }
+
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void dialogEventBus(DialogEvent dialogEvent) {
+        String message = dialogEvent.name;
+        Log.e("dialog", message.toString());
+        chooseCamera();
+    }
+
+
+
+   private void progressdialog() {
+
+       // TODO Auto-generated method stub
+
+          m_count = 0;
+
+       // 创建ProgressDialog对象
+       m_pDialog = new ProgressDialog( this);
+
+       // 设置进度条风格，风格为长形
+       m_pDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+
+       // 设置ProgressDialog 标题
+       m_pDialog.setTitle("提示");
+
+       // 设置ProgressDialog 提示信息
+       m_pDialog.setMessage("webrtc交换中");
+
+
+       // 设置ProgressDialog 进度条进度
+       m_pDialog.setProgress(100);
+
+       // 设置ProgressDialog 的进度条是否不明确
+       m_pDialog.setIndeterminate(false);
+
+       // 设置ProgressDialog 是否可以按退回按键取消
+       m_pDialog.setCancelable(true);
+
+       // 让ProgressDialog显示
+       m_pDialog.show();
+
+       new Thread()
+       {
+           public void run()
+           {
+               try
+               {
+                   while (m_count <= 100)
+                   {
+                       // 由线程来控制进度。
+                       m_pDialog.setProgress(m_count++);
+                       Thread.sleep(100);
+                   }
+                   m_pDialog.cancel();
+               }
+               catch (InterruptedException e)
+               {
+                   m_pDialog.cancel();
+               }
+           }
+       }.start();
+
+   }
+
+    public void chooseCamera() {
+
+        Dialog dialog = new AlertDialog.Builder(this).setIcon(
+                android.R.drawable.btn_star).setTitle("摄像头").setMessage(
+               "选择摄像头方向？").setPositiveButton("正面",
+               new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    flag="1";
+
+                }
+               }).setNegativeButton("反面", new DialogInterface.OnClickListener() {
+              @Override
+              public void onClick(DialogInterface dialog, int which) {
+
+                  flag="0";
+              }
+             }).setNeutralButton("取消", new DialogInterface.OnClickListener() {
+              @Override
+              public void onClick(DialogInterface dialog, int which) {
+
+                  dialog.dismiss();
+
+              }
+             }).create();
+             dialog.show();
+
+
 
     }
 

@@ -28,7 +28,7 @@ package fr.pchab.androidrtc;
  */
 public class ServerlessRTCClient {
     private VideoSource videoSource;
-
+    private AudioSource audioSource;
     private PeerConnection pc;
     private Boolean pcInitialized = false;
     private DataChannel channel = null;
@@ -42,7 +42,7 @@ public class ServerlessRTCClient {
     private State state;
     private MediaStream localMS;
     private Charset UTF_8 = Charset.forName("UTF-8");
-
+    MediaConstraints videoConstraints;
 
     public ServerlessRTCClient(RtcListener listener,PeerConnectionParameters params, EGLContext mEGLcontext) {
 
@@ -60,7 +60,7 @@ public class ServerlessRTCClient {
         pcConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"));
         pcConstraints.optional.add(new MediaConstraints.KeyValuePair("DtlsSrtpKeyAgreement", "true"));
         state = State.INITIALIZING;
-        setCamera();
+        setCamera("0");
     }
 
 
@@ -251,6 +251,12 @@ public class ServerlessRTCClient {
                     if (message.equals("start")){
                         videoSource.restart();
                     }
+                    if (message.equals("end")){
+                        videoSource.dispose();
+                    }
+
+
+
                 } catch (JSONException e) {
                     Log.e("1", "Malformed message received");
                 }
@@ -479,30 +485,38 @@ public class ServerlessRTCClient {
 
 
 
-    private void setCamera(){
+    public void setCamera(String flag){
         localMS = pcf.createLocalMediaStream("ARDAMS");
         if(pcParams.videoCallEnabled){
-            MediaConstraints videoConstraints = new MediaConstraints();
+             videoConstraints = new MediaConstraints();
             videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxHeight", Integer.toString(pcParams.videoHeight)));
             videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxWidth", Integer.toString(pcParams.videoWidth)));
             videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxFrameRate", Integer.toString(pcParams.videoFps)));
             videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("minFrameRate", Integer.toString(pcParams.videoFps)));
 
-            videoSource = pcf.createVideoSource(getVideoCapturer(), videoConstraints);
+            videoSource = pcf.createVideoSource(getVideoCapturer(flag), videoConstraints);
+
             localMS.addTrack(pcf.createVideoTrack("ARDAMSv0", videoSource));
         }
 
-        AudioSource audioSource = pcf.createAudioSource(new MediaConstraints());
-        localMS.addTrack(pcf.createAudioTrack("ARDAMSa0", audioSource));
+                 audioSource = pcf.createAudioSource(new MediaConstraints());
+                 localMS.addTrack(pcf.createAudioTrack("ARDAMSa0", audioSource));
 
-//        mListener.onLocalStream(localMS);
     }
 
-    private VideoCapturer getVideoCapturer() {
-        String frontCameraDeviceName = VideoCapturerAndroid.getNameOfFrontFacingDevice();
-        return VideoCapturerAndroid.create(frontCameraDeviceName);
-    }
 
+    private VideoCapturer getVideoCapturer(String flag) {
+        if (flag.equals("1")) {
+            String frontCameraDeviceName = VideoCapturerAndroid.getNameOfFrontFacingDevice();
+            return VideoCapturerAndroid.create(frontCameraDeviceName);
+        }
+        else
+        {
+            String backCameraDeviceName = VideoCapturerAndroid.getNameOfBackFacingDevice();
+            return VideoCapturerAndroid.create(backCameraDeviceName);
+        }
+
+    }
 
 
     public interface RtcListener{

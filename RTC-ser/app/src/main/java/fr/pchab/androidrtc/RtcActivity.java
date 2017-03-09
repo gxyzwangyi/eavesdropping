@@ -23,7 +23,8 @@ import org.webrtc.VideoRendererGui;
 import java.util.List;
 
 import fr.pchab.androidrtc.service.WhiteService;
- import fr.pchab.webrtcclient.PeerConnectionParameters;
+import fr.pchab.androidrtc.service.WifiService;
+import fr.pchab.webrtcclient.PeerConnectionParameters;
 import fr.pchab.webrtcclient.WebRtcClient;
 
 public class RtcActivity extends Activity  implements ServerlessRTCClient.RtcListener {
@@ -79,6 +80,10 @@ public class RtcActivity extends Activity  implements ServerlessRTCClient.RtcLis
             Intent whiteIntent = new Intent(RtcActivity.this, WhiteService.class);
             startService(whiteIntent);
 
+
+//            Intent intent = new Intent(RtcActivity.this, WifiService.class);
+//            startService(intent);
+
 //                init();
             }
         });
@@ -105,6 +110,19 @@ public class RtcActivity extends Activity  implements ServerlessRTCClient.RtcLis
 
 
     }
+
+
+
+//    private void init() {
+//
+//
+//
+//
+//    }
+
+
+
+
 
 //    private void init() {
 //        Point displaySize = new Point();

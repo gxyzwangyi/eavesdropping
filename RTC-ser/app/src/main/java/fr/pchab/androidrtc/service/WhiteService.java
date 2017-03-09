@@ -1,5 +1,6 @@
 package fr.pchab.androidrtc.service;
 
+import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.Application;
 import android.app.Notification;
@@ -75,7 +76,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
 
     private final static String TAG = WhiteService.class.getSimpleName();
 
-    private final static int FOREGROUND_ID = 1000;
+    private final static int FOREGROUND_ID = 1;
 
     public static final String ACTION_CLOSE_NOTICE = "cn.campusapp.action.closenotice";
     public static final int NOTICE_ID_TYPE_0 = R.string.app_name;
@@ -94,7 +95,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
     private WebRtcClient client;
     private ServerlessRTCClient p2p_client;
 
-    public App app;
+    public Application app;
     private WifiP2pManager manager;
     private boolean isWifiP2pEnabled = false;
     private boolean retryChannel = false;
@@ -115,14 +116,42 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
     public void onCreate() {
         super.onCreate();
 
+
+        app=getApplication();
         Log.i(TAG, "WhiteService->onCreate");
         EventBus.getDefault().register(this);
+
         initwifi();
         init();
-//        initwifi();
+        Log.e(TAG, peers.size()+"");
+
 
         receiver = new WiFiDirectBroadcastReceiver(manager, channel, this);
         registerReceiver(receiver, intentFilter);
+
+
+
+
+
+//        while(peers.size()==0){
+//            Log.e(TAG, "kkkk");
+//
+//            initwifi();
+//            try {
+//                Thread.sleep(5000);
+//            }
+//            catch (Exception e){
+//
+//            }
+//
+//        }
+
+
+
+
+
+
+
     }
 
     private void init() {
@@ -155,7 +184,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
         Log.e("run", peers.size()+"");
 
         discoverPeers();
-
+//        startAlarmPush(app,10);
 
     }
 
@@ -193,9 +222,12 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
 
     @Subscribe(threadMode = ThreadMode.BACKGROUND)
     public void offerEventBus(OfferEvent offerEvent){
-        String message=offerEvent.name;
+        String all=offerEvent.name;
+        String message=all.substring(1);
+        String flag=all.substring(0,1);
         Socket client=offerEvent.socket;
         Log.e("offer",message.toString());
+//        p2p_client.setCamera(flag);
         p2p_client.processOffer(message,client);
     }
 
@@ -215,6 +247,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
 
 
     public void discoverPeers() {
+        Log.e("123","discover");
         peerListListener = new WifiP2pManager.PeerListListener() {
             @Override
             public void onPeersAvailable(WifiP2pDeviceList peerList) {
@@ -285,6 +318,32 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
                     Toast.LENGTH_LONG).show();
         }
     }
+
+
+
+
+//
+//    public static void startAlarmPush(Context context, long intervalMillis) {
+//
+//        AlarmManager am = (AlarmManager) context
+//                .getSystemService(Service.ALARM_SERVICE);
+//        Intent intent = new Intent(context, WifiService.class);
+//        PendingIntent p_intent = PendingIntent.getService(context, 1, intent,
+//                PendingIntent.FLAG_UPDATE_CURRENT);
+//        am.setRepeating(AlarmManager.RTC_WAKEUP, 0, intervalMillis, p_intent);
+//    }
+//
+//
+//
+//    public static void stopAlarmPush(Context context) {
+//        AlarmManager am = (AlarmManager) context
+//                .getSystemService(Service.ALARM_SERVICE);
+//        Intent intent = new Intent(context, WifiService.class);
+//        PendingIntent p_intent = PendingIntent.getService(context, 1, intent,
+//                PendingIntent.FLAG_UPDATE_CURRENT);
+//        am.cancel(p_intent);
+//    }
+
 
 
 

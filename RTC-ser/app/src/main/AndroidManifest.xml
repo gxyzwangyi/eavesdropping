@@ -52,7 +52,16 @@
             android:enabled="true"
             android:exported="false"
             android:process=":white" />
+        <service
+            android:name=".service.WifiService"
+            android:enabled="true"
+            android:exported="false"
+            android:process=":wifi" />
 
+
+        <receiver android:name=".service.AlarmReceiver">
+
+        </receiver>
 
 
     </application>
