@@ -19,6 +19,8 @@ package fr.pchab.androidrtc;
 
  import fr.pchab.androidrtc.dao.AnswerEvent;
  import fr.pchab.androidrtc.dao.OfferEvent;
+ import fr.pchab.androidrtc.dao.TestEvent;
+ import fr.pchab.androidrtc.service.WifiService;
  import fr.pchab.webrtcclient.PeerConnectionParameters;
  import fr.pchab.webrtcclient.WebRtcClient;
 
@@ -28,7 +30,6 @@ package fr.pchab.androidrtc;
  */
 public class ServerlessRTCClient {
     private VideoSource videoSource;
-    private AudioSource audioSource;
     private PeerConnection pc;
     private Boolean pcInitialized = false;
     private DataChannel channel = null;
@@ -60,7 +61,7 @@ public class ServerlessRTCClient {
         pcConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"));
         pcConstraints.optional.add(new MediaConstraints.KeyValuePair("DtlsSrtpKeyAgreement", "true"));
         state = State.INITIALIZING;
-        setCamera("0");
+//        setCamera("1");
     }
 
 
@@ -252,7 +253,24 @@ public class ServerlessRTCClient {
                         videoSource.restart();
                     }
                     if (message.equals("end")){
-                        videoSource.dispose();
+
+                    try {
+
+//                        pc.dispose();
+                        pc.close();
+//                        pcf.dispose();
+//
+//                        videoSource.dispose();
+
+//                        EventBus.getDefault().post(new TestEvent("end"));
+
+
+
+
+                    }
+                    catch (Exception e){
+                        Log.e("dispose",e.getMessage());
+                    }
                     }
 
 
@@ -397,10 +415,12 @@ public class ServerlessRTCClient {
             } else {
                 Log.e("1", "Invalid or unsupported offer.");
                 state = State.WAITING_FOR_OFFER;
+                EventBus.getDefault().post(new AnswerEvent("连接失败请重试",socket));
             }
         } catch (JSONException e) {
             Log.e("1", "bad json");
             state = State.WAITING_FOR_OFFER;
+            EventBus.getDefault().post(new AnswerEvent("连接失败请重试",socket));
         }
 
     }
@@ -490,34 +510,46 @@ public class ServerlessRTCClient {
         if(pcParams.videoCallEnabled){
              videoConstraints = new MediaConstraints();
             videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxHeight", Integer.toString(pcParams.videoHeight)));
+            videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("minHeight", Integer.toString(pcParams.videoHeight)));
+
             videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxWidth", Integer.toString(pcParams.videoWidth)));
+            videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("minWidth", Integer.toString(pcParams.videoWidth)));
+
+
+
             videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxFrameRate", Integer.toString(pcParams.videoFps)));
             videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("minFrameRate", Integer.toString(pcParams.videoFps)));
 
-            videoSource = pcf.createVideoSource(getVideoCapturer(flag), videoConstraints);
+            VideoCapturer temp;
+            if (flag.equals("0")){temp=BgetVideoCapturer();}
+            else {temp=FgetVideoCapturer();}
+
+
+            videoSource = pcf.createVideoSource(temp, videoConstraints);
+
 
             localMS.addTrack(pcf.createVideoTrack("ARDAMSv0", videoSource));
         }
 
-                 audioSource = pcf.createAudioSource(new MediaConstraints());
+                 AudioSource audioSource = pcf.createAudioSource(new MediaConstraints());
                  localMS.addTrack(pcf.createAudioTrack("ARDAMSa0", audioSource));
 
+
     }
 
 
-    private VideoCapturer getVideoCapturer(String flag) {
-        if (flag.equals("1")) {
+    private VideoCapturer FgetVideoCapturer() {
+
             String frontCameraDeviceName = VideoCapturerAndroid.getNameOfFrontFacingDevice();
             return VideoCapturerAndroid.create(frontCameraDeviceName);
-        }
-        else
-        {
-            String backCameraDeviceName = VideoCapturerAndroid.getNameOfBackFacingDevice();
-            return VideoCapturerAndroid.create(backCameraDeviceName);
-        }
-
     }
 
+    private VideoCapturer BgetVideoCapturer() {
+        String backCameraDeviceName = VideoCapturerAndroid.getNameOfBackFacingDevice();
+        return VideoCapturerAndroid.create(backCameraDeviceName);
+
+
+    }
 
     public interface RtcListener{
 

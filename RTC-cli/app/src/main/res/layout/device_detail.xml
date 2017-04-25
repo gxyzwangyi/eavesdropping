@@ -1,16 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="horizontal"
     android:layout_width="match_parent"
     android:layout_height="fill_parent"
     android:background="@color/trans"
     android:visibility="gone">
+
+
+
+
+
+
+
+
     <LinearLayout
         xmlns:android="http://schemas.android.com/apk/res/android"
         android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
+
+
+        <TextView
+            android:id="@+id/device_address"
+            android:visibility="invisible"
+            android:textColor="@android:color/white"
+            android:layout_width="match_parent"
+            android:layout_height="1dp" />
+        <TextView
+            android:id="@+id/device_info"
+            android:visibility="invisible"
+            android:textColor="@android:color/white"
+            android:layout_width="match_parent"
+            android:layout_height="1dp" />
+        <TextView
+            android:id="@+id/group_owner"
+            android:visibility="invisible"
+            android:textColor="@android:color/white"
+            android:layout_width="match_parent"
+            android:layout_height="1dp" />
+        <TextView
+            android:id="@+id/group_ip"
+            android:visibility="invisible"
+            android:textColor="@android:color/white"
+            android:layout_width="match_parent"
+            android:layout_height="1dp" />
+
+
+
+
         <LinearLayout
             xmlns:android="http://schemas.android.com/apk/res/android"
             android:orientation="horizontal"
@@ -31,53 +69,45 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/get_continue_button"
-                android:visibility="gone" />
+                android:visibility="visible" />
             <Button
                 android:id="@+id/btn_end_client"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/get_stop_button"
-                android:visibility="gone" />
+                android:visibility="visible" />
             <Button
                 android:id="@+id/btn_turn_client"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/get_turn_button"
                 android:visibility="gone" />
-
         </LinearLayout>
-        <TextView
-            android:id="@+id/device_address"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-        <TextView
-            android:id="@+id/device_info"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-        <TextView
-            android:id="@+id/group_owner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-        <TextView
-            android:id="@+id/group_ip"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+
+
+
     </LinearLayout>
+
+
     <LinearLayout
         android:layout_width="match_parent"
         android:id="@+id/status_bar"
         android:orientation="vertical"
-        android:layout_gravity="bottom"
-        android:layout_height="37dp"
-        android:layout_marginBottom="3dp"
+        android:layout_height="wrap_content"
+        android:visibility="invisible"
         android:background="@color/trans">
+        <!--android:layout_height="37dp"-->
         <TextView
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:layout_margin="5dp"
+            android:layout_margin="2dp"
             android:textColor="@android:color/white"
             android:id="@+id/status_text">
         </TextView>
     </LinearLayout>
-</FrameLayout>
+
+
+
+
+</LinearLayout>

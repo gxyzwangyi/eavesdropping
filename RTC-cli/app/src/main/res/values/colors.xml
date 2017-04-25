@@ -2,6 +2,12 @@
 <resources>
     <color name="status_bar_color">#FF000000</color>
     <color name="layout_border_color">#FF111111</color>
-    <color name="trans">#00000000</color>
+    <color name="trans">#00FFFFFF</color>
+
+    <color name="trans_white">#11FFFFFF</color>
+
+    <color name="colorPrimary">#FF000000</color>
+    <color name="colorPrimaryDark">#FF000000</color>
+    <color name="colorAccent">#FF4081</color>
 
 </resources>

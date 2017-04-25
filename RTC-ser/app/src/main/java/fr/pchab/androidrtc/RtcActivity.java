@@ -1,11 +1,17 @@
 package fr.pchab.androidrtc;
 
 import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Point;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
@@ -15,17 +21,25 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 import org.json.JSONException;
 import org.webrtc.MediaStream;
 import org.webrtc.VideoRenderer;
 import org.webrtc.VideoRendererGui;
 
+import java.util.Date;
 import java.util.List;
 
+import fr.pchab.androidrtc.dao.PeerEvent;
+import fr.pchab.androidrtc.dao.TestEvent;
+import fr.pchab.androidrtc.service.AlarmReceiver;
 import fr.pchab.androidrtc.service.WhiteService;
 import fr.pchab.androidrtc.service.WifiService;
 import fr.pchab.webrtcclient.PeerConnectionParameters;
 import fr.pchab.webrtcclient.WebRtcClient;
+
+import static android.content.ContentValues.TAG;
 
 public class RtcActivity extends Activity  implements ServerlessRTCClient.RtcListener {
     private final static int VIDEO_CALL_SENT = 666;
@@ -73,7 +87,14 @@ public class RtcActivity extends Activity  implements ServerlessRTCClient.RtcLis
         vsv = (GLSurfaceView) findViewById(R.id.glview_call);
         vsv.setPreserveEGLContextOnPause(true);
         vsv.setKeepScreenOn(true);
-        VideoRendererGui.setView(vsv, new Runnable() {
+//        EventBus.getDefault().register(this);
+
+
+        String ip = getWIFILocalIpAdress(this);
+        Toast.makeText(this,ip,Toast.LENGTH_LONG).show();
+
+
+    VideoRendererGui.setView(vsv,   new Runnable() {
             @Override
             public void run() {
 
@@ -84,20 +105,14 @@ public class RtcActivity extends Activity  implements ServerlessRTCClient.RtcLis
 //            Intent intent = new Intent(RtcActivity.this, WifiService.class);
 //            startService(intent);
 
+
+
+
 //                init();
             }
         });
 
 
-//        final EditText input = (EditText)findViewById(R.id.edit_query);
-//        Button button = (Button)findViewById(R.id.search_button) ;
-//
-//        button.setOnClickListener(new View.OnClickListener() {
-//            public void onClick(View v) {
-//                p2p_client.processOffer( input.getText().toString());
-//
-//            }
-//        });
 
 
         // local and remote render
@@ -113,12 +128,24 @@ public class RtcActivity extends Activity  implements ServerlessRTCClient.RtcLis
 
 
 
-//    private void init() {
-//
-//
-//
-//
-//    }
+    public static String getWIFILocalIpAdress(Context mContext) {
+        WifiManager wifiManager = (WifiManager)mContext.getSystemService(Context.WIFI_SERVICE);
+        //判断wifi是否开启
+        if (!wifiManager.isWifiEnabled()) {
+            wifiManager.setWifiEnabled(true);
+        }
+        WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+        int ipAddress = wifiInfo.getIpAddress();
+        String ip = formatIpAddress(ipAddress);
+        return ip;
+    }
+    private static String formatIpAddress(int ipAdress) {
+
+        return (ipAdress & 0xFF ) + "." +
+                ((ipAdress >> 8 ) & 0xFF) + "." +
+                ((ipAdress >> 16 ) & 0xFF) + "." +
+                ( ipAdress >> 24 & 0xFF) ;
+    }
 
 
 
@@ -141,23 +168,33 @@ public class RtcActivity extends Activity  implements ServerlessRTCClient.RtcLis
     public void onPause() {
         super.onPause();
      //   vsv.onPause();
+        EventBus.getDefault().unregister(this);
 
-    }
+     }
 
     @Override
     public void onResume() {
         super.onResume();
-//        receiver = new WiFiDirectBroadcastReceiver(manager, channel, this);
-//        registerReceiver(receiver, intentFilter);
+
        // vsv.onResume();
+
+
 
     }
 
     @Override
     public void onDestroy() {
+        EventBus.getDefault().unregister(this);
 
         super.onDestroy();
     }
+
+
+
+
+
+
+
 
 
 

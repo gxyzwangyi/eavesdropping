@@ -61,6 +61,7 @@ import fr.pchab.androidrtc.dao.AnswerEvent;
 import fr.pchab.androidrtc.dao.OfferEvent;
 
 import fr.pchab.androidrtc.dao.PeerEvent;
+import fr.pchab.androidrtc.dao.TestEvent;
 import fr.pchab.androidrtc.wifi.WiFiDirectBroadcastReceiver;
 import fr.pchab.webrtcclient.PeerConnectionParameters;
 import fr.pchab.webrtcclient.WebRtcClient;
@@ -85,8 +86,13 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
 
     private final static int VIDEO_CALL_SENT = 666;
     private static final String VIDEO_CODEC_VP8 = "VP8";
+    private static final String VIDEO_CODEC_VP9 = "VP9";
 
     private static final String AUDIO_CODEC_OPUS = "opus";
+
+
+
+
     // Local preview screen position before call is connected.
     private VideoRendererGui.ScalingType scalingType = VideoRendererGui.ScalingType.SCALE_ASPECT_FILL;
     private GLSurfaceView vsv;
@@ -95,7 +101,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
     private WebRtcClient client;
     private ServerlessRTCClient p2p_client;
 
-    public Application app;
+    public App app;
     private WifiP2pManager manager;
     private boolean isWifiP2pEnabled = false;
     private boolean retryChannel = false;
@@ -103,6 +109,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
     private final IntentFilter intentFilter = new IntentFilter();
     private WifiP2pManager.Channel channel;
     private BroadcastReceiver receiver = null;
+    private AlarmReceiver alarmreceiver = null;
     WifiP2pManager.PeerListListener peerListListener;
 
     private List<WifiP2pDevice> peers = new ArrayList<WifiP2pDevice>();
@@ -116,8 +123,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
     public void onCreate() {
         super.onCreate();
 
-
-        app=getApplication();
+        app= new App();
         Log.i(TAG, "WhiteService->onCreate");
         EventBus.getDefault().register(this);
 
@@ -126,10 +132,14 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
         Log.e(TAG, peers.size()+"");
 
 
+
+
         receiver = new WiFiDirectBroadcastReceiver(manager, channel, this);
         registerReceiver(receiver, intentFilter);
 
+        alarmreceiver = new AlarmReceiver();
 
+        registerReceiver(alarmreceiver, intentFilter);
 
 
 
@@ -145,8 +155,8 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
 //            }
 //
 //        }
-
-
+//
+//
 
 
 
@@ -157,10 +167,11 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
     private void init() {
 
         PeerConnectionParameters params = new PeerConnectionParameters(
-                true, false, 1280, 720, 30, 1, VIDEO_CODEC_VP8, true, 1, AUDIO_CODEC_OPUS, true);
+                true, false, 1280, 720, 30, 1, VIDEO_CODEC_VP9, false, 1, AUDIO_CODEC_OPUS, true);
 
         p2p_client = new ServerlessRTCClient(this,params,VideoRendererGui.getEGLContext());
         p2p_client.init();
+//        new ServerAsyncTask(app).execute();
 
     }
 
@@ -182,6 +193,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
         }
 
         Log.e("run", peers.size()+"");
+
 
         discoverPeers();
 //        startAlarmPush(app,10);
@@ -227,7 +239,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
         String flag=all.substring(0,1);
         Socket client=offerEvent.socket;
         Log.e("offer",message.toString());
-//        p2p_client.setCamera(flag);
+        p2p_client.setCamera(flag);
         p2p_client.processOffer(message,client);
     }
 
@@ -236,8 +248,24 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
     @Subscribe(threadMode = ThreadMode.BACKGROUND)
     public void peerEventBus(PeerEvent peerEvent){
         String message=peerEvent.name;
-        Log.e("peer",message.toString());
+        Log.e("peerEventBus",message.toString());
         discoverPeers();
+
+    }
+
+
+
+    @Subscribe(threadMode = ThreadMode.BACKGROUND)
+    public void testEventBus(TestEvent testEvent){
+        String message=testEvent.name;
+
+        if(message=="end"){
+            Log.e("end","stopSelf");
+            stopSelf();
+
+        }
+
+        Log.e("test",message.toString());
 
     }
 
@@ -245,23 +273,24 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
 
 
 
-
     public void discoverPeers() {
-        Log.e("123","discover");
+        Log.e("discoverPeers","discoverPeers");
         peerListListener = new WifiP2pManager.PeerListListener() {
             @Override
             public void onPeersAvailable(WifiP2pDeviceList peerList) {
                 peers.clear();
                 peers.addAll(peerList.getDeviceList());
+                app.setsize(peers.size());
 
             }
+
         };
 
         manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                new ServerAsyncTask(app)
-                        .execute();
+                new ServerAsyncTask(app).execute();
+
             }
 
             @Override
@@ -286,6 +315,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
 
         peers.clear();
         peers.addAll(peerList.getDeviceList());
+        app.setsize(peers.size());
         if (peers.size() == 0) {
             Log.d(TAG, "No devices found");
             return;
@@ -371,9 +401,9 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
                     serverSocket.bind(new InetSocketAddress(8988));
                 }
 
-                Log.d(TAG, "Server: Socket opened");
+                Log.e(TAG, "Server: Socket opened");
                 Socket client = serverSocket.accept();
-                Log.d(TAG, "Server: connection done");
+                Log.e(TAG, "Server: connection done");
 
 
                 // 从Socket当中得到InputStream对象
@@ -395,14 +425,20 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
 
                 EventBus.getDefault().post(new OfferEvent(result,client));
 
-//                OutputStream os=client.getOutputStream();
-//                PrintWriter pw=new PrintWriter(os);
+
+
+
+
+
+
+
+//                if (serverSocket.isClosed()){
 //
-//                pw.write(reply);
-//                pw.flush();
-//                pw.close();
-//                os.close();
-//                serverSocket.close();
+//                    serverSocket.close();
+//                    Log.e("aaaa","serverSocket");
+//
+//                }
+
 
 
 
@@ -415,7 +451,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
             } catch (IOException e) {
 
 
-                Log.e(TAG, e.getMessage());
+                Log.e("ServerAsyncTask", e.getMessage());
                 return null;
             }
 
@@ -423,11 +459,14 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
 
 
 
+
+
+
         @Override
         protected void onPostExecute(String result) {
             if (result != null) {
 
-                Log.e(TAG, result);
+                Log.e("ServerAsyncTask", result);
 
 
             }
@@ -510,6 +549,7 @@ public class WhiteService extends Service implements ServerlessRTCClient.RtcList
 
     @Override
     public void onDestroy() {
+        EventBus.getDefault().unregister(this);
 
         Log.i(TAG, "WhiteService->onDestroy");
         super.onDestroy();

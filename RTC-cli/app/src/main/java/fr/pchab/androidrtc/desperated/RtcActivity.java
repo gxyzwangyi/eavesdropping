@@ -1,4 +1,4 @@
-package fr.pchab.androidrtc;
+package fr.pchab.androidrtc.desperated;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -6,21 +6,15 @@ import android.graphics.Point;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import android.view.Window;
 import android.view.WindowManager.LayoutParams;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Toast;
 
-import org.json.JSONException;
 import org.webrtc.MediaStream;
 import org.webrtc.VideoRenderer;
 import org.webrtc.VideoRendererGui;
 
-import java.util.List;
-
-import fr.pchab.androidrtc.service.WhiteService;
+import fr.pchab.androidrtc.R;
+import fr.pchab.androidrtc.ServerlessRTCClient;
 import fr.pchab.webrtcclient.PeerConnectionParameters;
 import fr.pchab.webrtcclient.WebRtcClient;
 
@@ -170,9 +164,9 @@ public class RtcActivity extends Activity  implements ServerlessRTCClient.RtcLis
 
     @Override
     public void onAddRemoteStream(MediaStream remoteStream) {
-        Log.e("!!!",remoteStream.label());
-        Log.e("!!!",remoteStream.videoTracks.toString());
-        Log.e("!!!",remoteStream.toString());
+        Log.e(" !!!",remoteStream.label());
+        Log.e(" !!!",remoteStream.videoTracks.toString());
+        Log.e(" !!!",remoteStream.toString());
 
 
         remoteStream.videoTracks.get(0).addRenderer(new VideoRenderer(remoteRender));

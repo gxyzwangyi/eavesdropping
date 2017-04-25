@@ -2,13 +2,13 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-    compileSdkVersion 22
-    buildToolsVersion "22.0.0"
+    compileSdkVersion 23
+    buildToolsVersion "23.0.0"
 
     defaultConfig {
         applicationId "fr.pchab.androidrtc"
-        minSdkVersion 15
-        targetSdkVersion 22
+        minSdkVersion 21
+        targetSdkVersion 23
         versionCode 1
         versionName "1.0"
     }
@@ -24,11 +24,13 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:appcompat-v7:22.2.0'
+    compile 'com.android.support:appcompat-v7:23.4.0'
     compile project(':webrtc-client')
     compile 'org.greenrobot:eventbus:3.0.0'
     compile 'io.reactivex:rxjava:1.2.3'
+    compile 'com.facebook.network.connectionclass:connectionclass:1.0.1'
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compile 'com.squareup.okhttp3:okhttp:3.1.2'
 
 }
 repositories {

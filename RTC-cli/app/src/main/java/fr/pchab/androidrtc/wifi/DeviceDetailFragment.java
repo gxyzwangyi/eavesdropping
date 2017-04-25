@@ -34,6 +34,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 import org.greenrobot.eventbus.EventBus;
@@ -51,6 +52,7 @@ import fr.pchab.androidrtc.dao.AnswerEvent;
 import fr.pchab.androidrtc.dao.DialogEvent;
 import fr.pchab.androidrtc.dao.StartEvent;
 import fr.pchab.androidrtc.dao.StopEvent;
+import fr.pchab.androidrtc.dao.ToastEvent;
 import fr.pchab.androidrtc.dao.TurnEvent;
 
 /**
@@ -80,16 +82,20 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
             public void onClick(View v) {
 
 
-                EventBus.getDefault().post(new DialogEvent("camera"));
+                if(device!=null) {
 
-                WifiP2pConfig config = new WifiP2pConfig();
-                config.deviceAddress = device.deviceAddress;
-                config.wps.setup = WpsInfo.PBC;
-                if (progressDialog != null && progressDialog.isShowing()) {
-                    progressDialog.dismiss();
-                }
-                progressDialog = ProgressDialog.show(getActivity(), "Press back to cancel",
-                        "Connecting to :" + device.deviceAddress, true, true
+
+                    EventBus.getDefault().post(new DialogEvent("camera"));
+
+                    WifiP2pConfig config = new WifiP2pConfig();
+
+                    config.deviceAddress = device.deviceAddress;
+                    config.wps.setup = WpsInfo.PBC;
+                    if (progressDialog != null && progressDialog.isShowing()) {
+                        progressDialog.dismiss();
+                    }
+                    progressDialog = ProgressDialog.show(getActivity(), "Press back to cancel",
+                            "Connecting to :" + device.deviceAddress, true, true
 //                        new DialogInterface.OnCancelListener() {
 //
 //                            @Override
@@ -97,8 +103,24 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 //                                ((DeviceActionListener) getActivity()).cancelDisconnect();
 //                            }
 //                        }
-                        );
-                ((DeviceListFragment.DeviceActionListener) getActivity()).connect(config);
+                    );
+                    progressDialog.setCanceledOnTouchOutside(false);
+
+                    ((DeviceListFragment.DeviceActionListener) getActivity()).connect(config);
+
+
+                }
+
+                else{
+
+
+                    EventBus.getDefault().post(new ToastEvent("暂未找到设备，无法连接"));
+                }
+
+
+
+
+
 
             }
         });
@@ -137,16 +159,23 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
                     }
                 });
 
-        mContentView.findViewById(R.id.btn_turn_client).setOnClickListener(
-                new View.OnClickListener() {
-
-                    @Override
-                    public void onClick(View v) {
-                        EventBus.getDefault().post(new TurnEvent("turn"));
 
 
-                    }
-                });
+
+//        mContentView.findViewById(R.id.btn_turn_client).setOnClickListener(
+//                new View.OnClickListener() {
+//
+//                    @Override
+//                    public void onClick(View v) {
+//                        EventBus.getDefault().post(new TurnEvent("turn"));
+//
+//
+//                    }
+//                });
+
+
+
+
 
 
 
@@ -213,7 +242,11 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
         }
 
         // hide the connect button
-        mContentView.findViewById(R.id.btn_connect).setVisibility(View.GONE);
+//        mContentView.findViewById(R.id.btn_connect).setVisibility(View.VISIBLE);
+
+
+        mContentView.findViewById(R.id.btn_connect).setVisibility(View.VISIBLE);
+
     }
 
     /**
@@ -244,10 +277,10 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
         view.setText(R.string.empty);
         view = (TextView) mContentView.findViewById(R.id.status_text);
         view.setText(R.string.empty);
-        mContentView.findViewById(R.id.btn_start_client).setVisibility(View.GONE);
-        mContentView.findViewById(R.id.btn_end_client).setVisibility(View.GONE);
+        mContentView.findViewById(R.id.btn_start_client).setVisibility(View.VISIBLE);
+        mContentView.findViewById(R.id.btn_end_client).setVisibility(View.VISIBLE);
 
-        this.getView().setVisibility(View.GONE);
+        this.getView().setVisibility(View.VISIBLE);
     }
 
     /**

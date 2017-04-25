@@ -7,8 +7,10 @@ package fr.pchab.androidrtc.dao;
 public class MakeEvent {
 
         public final String name;
-        public MakeEvent(String name) {
+        public final String ip;
+        public MakeEvent(String name,String ip) {
             this.name = name;
+            this.ip = ip;
         }
 
 }

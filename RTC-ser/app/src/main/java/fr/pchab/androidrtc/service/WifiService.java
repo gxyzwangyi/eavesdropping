@@ -51,8 +51,6 @@ public class WifiService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-//        EventBus.getDefault().register(this);
-//        EventBus.getDefault().post(new PeerEvent("discover"));
 
     }
 
@@ -81,13 +79,6 @@ public class WifiService extends Service {
         manager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtTime, pi);
         return super.onStartCommand(intent, flags, startId);
     }
-
-    @Subscribe(threadMode = ThreadMode.BACKGROUND)
-    public void testEventBus(TestEvent testEvent){
-        String message=testEvent.name;
-        Log.e("test",message.toString());
-     }
-
 
 
 }

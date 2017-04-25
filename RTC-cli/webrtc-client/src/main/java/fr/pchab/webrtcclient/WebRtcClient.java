@@ -10,9 +10,11 @@ import com.github.nkzawa.emitter.Emitter;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.media.MediaRecorder;
 import android.opengl.EGLContext;
 import android.util.Log;
 import org.webrtc.*;
+
 
 public class WebRtcClient {
     private final static String TAG = WebRtcClient.class.getCanonicalName();
@@ -361,10 +363,17 @@ public class WebRtcClient {
 
             videoSource = factory.createVideoSource(getVideoCapturer(), videoConstraints);
             localMS.addTrack(factory.createVideoTrack("ARDAMSv0", videoSource));
+
+
+
+
         }
 
         AudioSource audioSource = factory.createAudioSource(new MediaConstraints());
         localMS.addTrack(factory.createAudioTrack("ARDAMSa0", audioSource));
+
+
+
 
         mListener.onLocalStream(localMS);
     }

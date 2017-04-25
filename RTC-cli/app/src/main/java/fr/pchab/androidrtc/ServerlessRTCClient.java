@@ -4,6 +4,7 @@ package fr.pchab.androidrtc;
  import android.content.Context;
  import android.opengl.EGLContext;
  import android.util.Log;
+ import android.widget.Toast;
 
  import org.greenrobot.eventbus.EventBus;
  import org.json.JSONException;
@@ -19,6 +20,7 @@ package fr.pchab.androidrtc;
  import java.util.Objects;
 
  import fr.pchab.androidrtc.dao.MakeEvent;
+ import fr.pchab.androidrtc.dao.ToastEvent;
  import fr.pchab.androidrtc.wifi.NewService;
  import fr.pchab.androidrtc.wifi.WiFiDirectActivity;
  import fr.pchab.webrtcclient.PeerConnectionParameters;
@@ -80,6 +82,9 @@ public class ServerlessRTCClient implements Serializable {
          * Initialization in progress.
          */
         INITIALIZING,
+
+        MAKEOFFER,
+
         /**
          * App is waiting for offer, fill in the offer into the edit text.
          */
@@ -109,7 +114,6 @@ public class ServerlessRTCClient implements Serializable {
          */
         CHAT_ENDED
     }
-
 
 
 
@@ -151,6 +155,7 @@ public class ServerlessRTCClient implements Serializable {
         @Override
         public void onRemoveStream(MediaStream mediaStream) {
             Log.d(TAG, "onRemoveStream " + mediaStream.label());
+
         }
 
 
@@ -264,6 +269,9 @@ public class ServerlessRTCClient implements Serializable {
         state = State.WAITING_FOR_OFFER;
     }
 
+    public void initmakeoffer(){
+        state = State.MAKEOFFER;
+    }
 
 
 
@@ -282,10 +290,15 @@ public class ServerlessRTCClient implements Serializable {
                 pc.setRemoteDescription(new DefaultSdpObserver(), answer);
             } else {
                 Log.e("1", "Invalid or unsupported answer.");
+                EventBus.getDefault().post(new ToastEvent("未能成功建立webrtc连接，请重试"));
+
                 state = State.WAITING_FOR_ANSWER;
             }
         } catch (JSONException e) {
+
             Log.e("1", "bad json");
+            EventBus.getDefault().post(new ToastEvent("未能成功建立webrtc连接，请重试"));
+
             state = State.WAITING_FOR_ANSWER;
         }
     }
@@ -298,8 +311,11 @@ public class ServerlessRTCClient implements Serializable {
     /**
      * App creates the offer.
      */
-    public void  makeOffer()  {
-        state = State.CREATING_OFFER;
+    public void  makeOffer(final String ip)  {
+
+        Log.e("make", "make offer");
+
+//        state = State.CREATING_OFFER;
         pcInitialized = true;
         Observable<String> myObservable;
 
@@ -312,7 +328,7 @@ public class ServerlessRTCClient implements Serializable {
 
             public void onIceGatheringChange(PeerConnection.IceGatheringState p0) {
                 super.onIceGatheringChange(p0);
-                if (p0 == PeerConnection.IceGatheringState.COMPLETE) {
+                if (p0 == PeerConnection.IceGatheringState.COMPLETE && state== State.MAKEOFFER )   {
                     Log.e("make", "Your offer is:");
                     state = State.WAITING_FOR_ANSWER;
 //                    Log.e("hhhhh", pc.getLocalDescription().description);
@@ -323,7 +339,7 @@ public class ServerlessRTCClient implements Serializable {
 
 
 
-                    EventBus.getDefault().post(new MakeEvent(sdp));
+                    EventBus.getDefault().post(new MakeEvent(sdp,ip));
 
 
 

@@ -56,16 +56,23 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
         String action = intent.getAction();
         if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
 
+            EventBus.getDefault().post(new PeerEvent("1broadcast  p2p search"));
+
+            Log.e("broadcast","1");
 
         } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
-           EventBus.getDefault().post(new PeerEvent("p2p search"));
+            Log.e("broadcast","p2p");
+           EventBus.getDefault().post(new PeerEvent("2broadcast p2p search"));
 
 
         } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
+            EventBus.getDefault().post(new PeerEvent("3broadcast p2p search"));
 
-
+            Log.e("broadcast","2");
 
         } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
+            Log.e("broadcast","3");
+            EventBus.getDefault().post(new PeerEvent("4broadcast p2p search"));
 
 
         }

@@ -3,6 +3,7 @@ package fr.pchab.androidrtc.wifi;
 import android.app.IntentService;
 import android.content.Intent;
 import android.util.Log;
+import android.widget.Toast;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -16,6 +17,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 
 import fr.pchab.androidrtc.dao.AnswerEvent;
+import fr.pchab.androidrtc.dao.ToastEvent;
 import rx.Observable;
 import rx.Subscriber;
 
@@ -97,15 +99,21 @@ public class NewService extends IntentService {
 
 
         } catch (IOException e) {
-            Log.e("wrong", e.getMessage());
+            Log.e("socket wrong", e.getMessage());
+            EventBus.getDefault().post(new ToastEvent(e.getMessage()));
+
+
+
         } finally {
             if (socket != null) {
                 if (socket.isConnected()) {
                     try {
                         socket.close();
+                        Log.e("socket","close");
                     } catch (IOException e) {
                         // Give up
-                        e.printStackTrace();
+                        Log.e("socket","close fail");
+//                        e.printStackTrace();
                     }
                 }
             }

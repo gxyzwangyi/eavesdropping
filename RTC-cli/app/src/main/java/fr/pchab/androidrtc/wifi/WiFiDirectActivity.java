@@ -16,16 +16,22 @@
 
 package fr.pchab.androidrtc.wifi;
 
-import android.app.Activity;
+import android.Manifest;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Point;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -37,16 +43,27 @@ import android.net.wifi.p2p.WifiP2pManager.Channel;
 import android.net.wifi.p2p.WifiP2pManager.ChannelListener;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
+import android.os.IBinder;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+
+import android.support.v7.app.AppCompatActivity;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
+
+import com.facebook.network.connectionclass.ConnectionClassManager;
+import com.facebook.network.connectionclass.ConnectionQuality;
+import com.facebook.network.connectionclass.DeviceBandwidthSampler;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -55,6 +72,7 @@ import org.webrtc.MediaStream;
 import org.webrtc.VideoRenderer;
 import org.webrtc.VideoRendererGui;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,12 +83,16 @@ import fr.pchab.androidrtc.dao.DialogEvent;
 import fr.pchab.androidrtc.dao.MakeEvent;
 import fr.pchab.androidrtc.dao.StartEvent;
 import fr.pchab.androidrtc.dao.StopEvent;
+import fr.pchab.androidrtc.dao.ToastEvent;
 import fr.pchab.androidrtc.dao.TurnEvent;
+import fr.pchab.androidrtc.service.RecordService;
 import fr.pchab.webrtcclient.PeerConnectionParameters;
 import rx.Subscriber;
-
-import static android.R.id.message;
-import static android.R.id.progress;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 /**
  * An activity that uses WiFi Direct APIs to discover and connect with available
@@ -79,7 +101,10 @@ import static android.R.id.progress;
  * The application should also register a BroadcastReceiver for notification of
  * WiFi state related events.
  */
-public class WiFiDirectActivity extends FragmentActivity implements ChannelListener, DeviceListFragment.DeviceActionListener,ServerlessRTCClient.RtcListener {
+public class WiFiDirectActivity extends AppCompatActivity implements ChannelListener, DeviceListFragment.DeviceActionListener,ServerlessRTCClient.RtcListener {
+
+
+
 
     public static final String TAG = "wifidirectdemo";
     private WifiP2pManager manager;
@@ -97,6 +122,15 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
 
     private static final String VIDEO_CODEC_VP8 = "VP8";
 
+    private static final String VIDEO_CODEC_VP9 = "VP9";
+    private static final int RECORD_REQUEST_CODE  = 101;
+    private static final int STORAGE_REQUEST_CODE = 102;
+    private static final int AUDIO_REQUEST_CODE   = 103;
+
+    private MediaProjectionManager projectionManager;
+    private MediaProjection mediaProjection;
+    private RecordService recordService;
+
     private static final String AUDIO_CODEC_OPUS = "opus";
     // Local preview screen position before call is connected.
 
@@ -111,9 +145,26 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     private GLSurfaceView vsv;
     private VideoRenderer.Callbacks localRender;
     private VideoRenderer.Callbacks remoteRender;
+    private ConnectionQuality mConnectionClass = ConnectionQuality.UNKNOWN;
+    private int mTries = 0;
+    private String mURL = "https://ss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/logo/bd_logo1_31bdc765.png";
+    private Button connect;
+     public ServerlessRTCClient p2p_client;
+    public String flag="1";
+    private ConnectionClassManager mConnectionClassManager;
+    private DeviceBandwidthSampler mDeviceBandwidthSampler;
 
-    public ServerlessRTCClient p2p_client;
-    public String flag="0";
+//    private Surface mRecorderSurface;
+//    private TextureView mPreview;
+//    private MediaRecorder mMediaRecorder;
+//    private File mOutputFile;
+//    private MyRecorder mRecorder = null;
+//
+//    private boolean isRecording = false;
+//
+
+
+
     /**
      * @param isWifiP2pEnabled the isWifiP2pEnabled to set
      */
@@ -125,9 +176,10 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
+        projectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
 
         EventBus.getDefault().register(this);
-
+        Permission();
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
@@ -135,6 +187,22 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
 
         manager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         channel = manager.initialize(this, getMainLooper(), null);
+
+
+         mConnectionClassManager = ConnectionClassManager.getInstance();
+         mDeviceBandwidthSampler = DeviceBandwidthSampler.getInstance();
+
+        checkWifi();
+
+
+        ConnectionQuality cq = ConnectionClassManager.getInstance().getCurrentBandwidthQuality();
+
+        Toast.makeText(this,"Network:"+cq,Toast.LENGTH_SHORT).show();
+
+        final DeviceDetailFragment Dfragment = (DeviceDetailFragment) getFragmentManager()
+                .findFragmentById(R.id.frag_detail);
+        Dfragment.resetViews();
+
 
 
         setIsWifiP2pEnabled(true);
@@ -154,6 +222,9 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
 //                        | LayoutParams.FLAG_TURN_SCREEN_ON
         );
 
+
+
+
         vsv = (GLSurfaceView) findViewById(R.id.glview_call);
         vsv.setPreserveEGLContextOnPause(true);
         vsv.setKeepScreenOn(true);
@@ -165,16 +236,142 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
             }
         });
 
+
+
+
+
+
+
+
+
         init();
 
         remoteRender = VideoRendererGui.create(
                 REMOTE_X, REMOTE_Y,
                 REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
 
+
+//        prepareVideoRecorder();
+
+
+
         find_peer();
 
 
     }
+
+
+    private void checkWifi(){
+
+                OkHttpClient client = new OkHttpClient();
+                Request.Builder builder = new Request.Builder();
+                Request request = builder.url("http://www.baidu.com").build();
+
+
+                DeviceBandwidthSampler.getInstance().startSampling();
+                client.newCall(request).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(Call call, IOException e) {
+                        DeviceBandwidthSampler.getInstance().stopSampling();
+                        Log.e("TAG","onFailure:"+e);
+                        WiFiDirectActivity.this.runOnUiThread(new Runnable() {
+                            public void run() {
+                                Toast.makeText(WiFiDirectActivity.this, "网络环境太差或无法连接外网无法测速", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onResponse(Call call, Response response) throws IOException {
+                        DeviceBandwidthSampler.getInstance().stopSampling();
+                        Log.e("TAG","onResponse:"+response);
+                        final ConnectionQuality connectionQuality = ConnectionClassManager.getInstance().getCurrentBandwidthQuality();
+                        final double downloadKBitsPerSecond = ConnectionClassManager.getInstance().getDownloadKBitsPerSecond();
+                        Log.e("TAG","网络状态:"+connectionQuality+" 下载速度:"+downloadKBitsPerSecond+" kb/s");
+
+                       final String s ="网络状态:"+connectionQuality+"\n"+"下载速度:"+downloadKBitsPerSecond+" kb/s";
+//                        Toast.makeText(WiFiDirectActivity.this,s,Toast.LENGTH_LONG).show();
+
+                        WiFiDirectActivity.this.runOnUiThread(new Runnable() {
+                            public void run() {
+                                Toast.makeText(WiFiDirectActivity.this, s, Toast.LENGTH_SHORT).show();
+                            }
+                        });
+
+
+                    }
+                });
+
+
+    }
+
+
+
+    private void intConnect(){
+
+        final AlertDialog.Builder alertDialog = new AlertDialog.Builder(WiFiDirectActivity.this);
+        alertDialog.setTitle("请填写对方设备的ip地址");
+        alertDialog.setMessage("输入ip");
+
+
+        final EditText input = new EditText(WiFiDirectActivity.this);
+
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT);
+        input.setLayoutParams(lp);
+        alertDialog.setView(input); // uncomment this line
+
+        SharedPreferences sharedPreferences = getSharedPreferences("video", Context.MODE_PRIVATE);
+        String ip = sharedPreferences.getString("ip", "");
+        input.setText(ip);
+
+
+        alertDialog.setPositiveButton("YES",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (manager != null && channel != null) {
+
+                            Log.e("makeoffer", "alertDialog makeoffer");
+
+                            SendsdpService(input.getText().toString());
+
+
+
+                            SharedPreferences sharedPreferences = getSharedPreferences("video", Context.MODE_PRIVATE);
+
+                            SharedPreferences.Editor editor = sharedPreferences.edit();
+
+                            editor.putString("ip", input.getText().toString());
+
+                            editor.apply();
+
+                            progressdialog();
+
+                        } else {
+                            Log.e(TAG, "channel or manager is null");
+                        }
+
+                    }
+                });
+
+        alertDialog.setNegativeButton("NO",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+        alertDialog.show();
+
+
+
+    }
+
+
+
+
 
 
     private void init() {
@@ -183,7 +380,7 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
 
         Log.e("run", "");
         PeerConnectionParameters params = new PeerConnectionParameters(
-                true, false, 1280, 720, 30, 1, VIDEO_CODEC_VP8, true, 1, AUDIO_CODEC_OPUS, true);
+                true, false, 1280, 720, 30, 1, VIDEO_CODEC_VP9, false, 1, AUDIO_CODEC_OPUS, true);
 
 
         p2p_client = new ServerlessRTCClient(this, params, VideoRendererGui.getEGLContext());
@@ -195,9 +392,20 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
 
     @Override
     public void onAddRemoteStream(MediaStream remoteStream) {
-        Log.e("!!!", remoteStream.label());
-        Log.e("!!!", remoteStream.videoTracks.toString());
-        Log.e("!!!", remoteStream.toString());
+        Log.e("add!!!", remoteStream.label());
+        Log.e("add!!!", remoteStream.videoTracks.toString());
+        Log.e("add!!!", remoteStream.toString());
+
+
+
+
+
+
+
+
+
+//        WebRtcAudioRecord webRtcAudioRecord=new WebRtcAudioRecord();
+//        webRtcAudioRecord.InitRecording();
 
 
         remoteStream.videoTracks.get(0).addRenderer(new VideoRenderer(remoteRender));
@@ -211,6 +419,8 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     public void onRemoveRemoteStream(int endPoint) {
 
     }
+
+
 
 
     @Override
@@ -296,18 +506,28 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
         super.onResume();
         receiver = new WiFiDirectBroadcastReceiver(manager, channel, this);
         registerReceiver(receiver, intentFilter);
+        mConnectionClassManager.register(mListener);
+
+
     }
 
     @Override
     public void onPause() {
         super.onPause();
         unregisterReceiver(receiver);
+        mConnectionClassManager.remove(mListener);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        disconnect();
+        EventBus.getDefault().post(new TurnEvent("end"));
+
+        unbindService(connection);
         EventBus.getDefault().unregister(this);
+
 
     }
 
@@ -347,7 +567,8 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
             case R.id.atn_direct_enable:
                 if (manager != null && channel != null) {
 
-                    SendsdpService();
+                    Log.e("makeoffer", "webrtc makeoffer");
+                    SendsdpService("192.168.49.1");
                     progressdialog();
 
                 } else {
@@ -379,6 +600,20 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
                     }
                 });
                 return true;
+            case R.id.atn_wifi_check:
+                checkWifi();
+                return true;
+            case R.id.atn_socket:
+                intConnect();
+
+                EventBus.getDefault().post(new DialogEvent("camera1"));
+
+                return true;
+            case R.id.video_quality:
+
+                videoqualityDialog();
+                return true;
+
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -415,7 +650,13 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     public void disconnect() {
         final DeviceDetailFragment fragment = (DeviceDetailFragment) getFragmentManager()
                 .findFragmentById(R.id.frag_detail);
-        fragment.resetViews();
+        try {
+            fragment.resetViews();
+        }
+        catch (Exception e)
+        {
+            Log.e("xxxx",e.getMessage());
+        }
         manager.removeGroup(channel, new ActionListener() {
 
             @Override
@@ -425,7 +666,14 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
 
             @Override
             public void onSuccess() {
-                fragment.getView().setVisibility(View.GONE);
+                try {
+                    fragment.getView().setVisibility(View.GONE);
+                }
+                catch (Exception e)
+                {
+                    Log.e("xxxx",e.getMessage());
+                }
+
             }
 
         });
@@ -480,18 +728,29 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void makeEventBus(MakeEvent makeEvent) {
         String message = flag+makeEvent.name;
+        String ip = makeEvent.ip;
+
         Log.e("make", message.toString());
 
         Intent serviceIntent = new Intent(WiFiDirectActivity.this, NewService.class);
         serviceIntent.putExtra(NewService.EXTRAS,
-                "192.168.49.1");
+                ip);
         serviceIntent.putExtra("p2p", message);
         WiFiDirectActivity.this.startService(serviceIntent);
 
     }
 
-    public void SendsdpService() {
-        p2p_client.makeOffer();
+
+
+
+
+
+
+    public void SendsdpService(String ip) {
+        Log.e("xxxx","SendsdpService"+ip);
+        p2p_client.initmakeoffer();
+
+        p2p_client.makeOffer(ip);
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -524,6 +783,12 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     public void turnEventBus(TurnEvent turnEvent) {
         String message = turnEvent.name;
         Log.e("turn", message.toString());
+        if (message == "end")
+        {
+            unrecorded();
+
+        }
+
         p2p_client.sendMessage(message);
 
     }
@@ -537,8 +802,62 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
     }
 
 
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void ToastEventBus(ToastEvent toastEvent) {
+        String message = toastEvent.name;
 
-   private void progressdialog() {
+        Toast.makeText(getApplicationContext(), message,Toast.LENGTH_LONG).show();
+
+
+
+
+    }
+
+
+
+
+
+    private void  videoqualityDialog() {
+
+        final String[] single_list = {"720p", "480p"};
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("请选择视频录制质量");
+        builder.setIcon(R.drawable.ic_videocam_white_48dp);
+
+
+        SharedPreferences sharedPreferences = getSharedPreferences("video", Context.MODE_PRIVATE);
+        int quality = sharedPreferences.getInt("quality", 0);
+        Log.e("ppppp0",quality+"");
+
+        builder.setSingleChoiceItems(single_list, quality, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+                SharedPreferences sharedPreferences = getSharedPreferences("video", Context.MODE_PRIVATE);
+
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+
+                editor.putInt("quality", which);
+
+                editor.apply();
+
+                Log.e("ppppp1",which+"");
+
+                String str = single_list[which];
+                Toast.makeText(WiFiDirectActivity.this, "你选择了"+str , Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            }
+        });
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
+
+
+
+    private void progressdialog() {
 
        // TODO Auto-generated method stub
 
@@ -579,9 +898,10 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
                    {
                        // 由线程来控制进度。
                        m_pDialog.setProgress(m_count++);
-                       Thread.sleep(100);
+                       Thread.sleep(240);
                    }
                    m_pDialog.cancel();
+                   recorded();
                }
                catch (InterruptedException e)
                {
@@ -618,10 +938,309 @@ public class WiFiDirectActivity extends FragmentActivity implements ChannelListe
               }
              }).create();
              dialog.show();
-
-
+            dialog.setCanceledOnTouchOutside(false);
 
     }
+
+    ConnectionChangedListener mListener = new ConnectionChangedListener();
+
+    private class ConnectionChangedListener implements
+            ConnectionClassManager.ConnectionClassStateChangeListener {
+        @Override
+        public void onBandwidthStateChange(ConnectionQuality bandwidthState) {
+            Log.e("onBandwidthStateChange", bandwidthState.toString());
+
+            final ConnectionQuality connectionQuality = ConnectionClassManager.getInstance().getCurrentBandwidthQuality();
+            final double downloadKBitsPerSecond = ConnectionClassManager.getInstance().getDownloadKBitsPerSecond();
+
+            Log.e("TAG","网络状态:"+connectionQuality+" 下载速度:"+downloadKBitsPerSecond+" kb/s");
+
+            final String s ="网络状态:"+connectionQuality+"\n"+"下载速度:"+downloadKBitsPerSecond+" kb/s";
+            WiFiDirectActivity.this.runOnUiThread(new Runnable() {
+                public void run() {
+                    Toast.makeText(WiFiDirectActivity.this, s, Toast.LENGTH_SHORT).show();
+                }
+            });
+
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public void Permission(){
+
+
+    if (ContextCompat.checkSelfPermission(WiFiDirectActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            != PackageManager.PERMISSION_GRANTED) {
+        ActivityCompat.requestPermissions(this,
+                new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, STORAGE_REQUEST_CODE);
+    }
+
+    if (ContextCompat.checkSelfPermission(WiFiDirectActivity.this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+        ActivityCompat.requestPermissions(this,
+                new String[] {Manifest.permission.RECORD_AUDIO}, AUDIO_REQUEST_CODE);
+    }
+
+    Intent intent = new Intent(this, RecordService.class);
+    bindService(intent, connection, BIND_AUTO_CREATE);
+
+}
+
+
+
+
+
+
+
+    public void recorded() {
+
+        if (!recordService.isRunning()) {
+
+            Intent captureIntent = projectionManager.createScreenCaptureIntent();
+            startActivityForResult(captureIntent, RECORD_REQUEST_CODE);
+        }
+
+    }
+
+
+    public void unrecorded() {
+
+        if (recordService.isRunning()) {
+            recordService.stopRecord();
+
+
+        }
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == RECORD_REQUEST_CODE && resultCode == RESULT_OK) {
+            mediaProjection = projectionManager.getMediaProjection(resultCode, data);
+            recordService.setMediaProject(mediaProjection);
+            recordService.startRecord();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == STORAGE_REQUEST_CODE || requestCode == AUDIO_REQUEST_CODE) {
+            if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                finish();
+            }
+        }
+    }
+
+
+
+
+    private ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            DisplayMetrics metrics = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(metrics);
+            RecordService.RecordBinder binder = (RecordService.RecordBinder) service;
+            recordService = binder.getRecordService();
+
+            SharedPreferences sharedPreferences = getSharedPreferences("video", Context.MODE_PRIVATE);
+
+
+
+            int quality = sharedPreferences.getInt("quality", 0);
+            Log.e("ppppp",quality+"");
+
+            if (quality==0){
+                recordService.setConfig(720, 1280, metrics.densityDpi);
+
+            }
+            else {
+                recordService.setConfig(480, 800, metrics.densityDpi);
+
+            }
+
+
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {}
+    };
+
+
+
+
+
+
+//
+//    public void recorded(){
+//
+//            // BEGIN_INCLUDE(prepare_start_media_recorder)
+//
+//            new MediaPrepareTask().execute(null, null, null);
+//
+//            // END_INCLUDE(prepare_start_media_recorder)
+//    }
+//    public void unrecord(){
+//
+//        // stop recording and release camera
+//        try {
+//            Log.e("record","stop");
+//            mMediaRecorder.stop();  // stop the recording
+//        } catch (RuntimeException e) {
+//            // RuntimeException is thrown when stop() is called immediately after start().
+//            // In this case the output file is not properly constructed ans should be deleted.
+//            Log.e("record", "RuntimeException: stop() is called immediately after start()");
+//            //noinspection ResultOfMethodCallIgnored
+//
+//            mOutputFile.delete();
+//
+//        }
+//        releaseMediaRecorder(); // release the MediaRecorder object
+////            mCamera.lock();         // take camera access back from MediaRecorder
+//
+//        // inform the user that recording has stopped
+//        isRecording = false;
+////            releaseCamera();
+//        // END_INCLUDE(stop_release_media_recorder)
+//
+//
+//
+//    }
+//
+//
+//
+//
+//    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+//    private boolean prepareVideoRecorder(){
+//
+//        mMediaRecorder = new MediaRecorder();
+//
+//
+//        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+//
+//        mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT );
+//
+//        mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+//
+//        mOutputFile = CameraHelper.getOutputMediaFile(CameraHelper.MEDIA_TYPE_VIDEO);
+//        Log.e("地址",mOutputFile.getPath().toString());
+//        if (mOutputFile == null) {
+//            return false;
+//
+//
+//        }
+//        mMediaRecorder.setOutputFile(mOutputFile.getPath());
+//        mMediaRecorder.setVideoSize(480, 800);
+//        mMediaRecorder.setVideoFrameRate(20);
+//        mMediaRecorder.setVideoEncodingBitRate(10000000);
+//
+//        mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+//        mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+//
+//
+//
+//        try {
+//            mMediaRecorder.prepare();
+//        } catch (IllegalStateException e) {
+//            Log.e("record", "IllegalStateException preparing MediaRecorder: " + e.getMessage());
+//            releaseMediaRecorder();
+//            return false;
+//        } catch (IOException e) {
+//            Log.e("record", "IOException preparing MediaRecorder: " + e.getMessage());
+//            releaseMediaRecorder();
+//            return false;
+//        }
+//        Log.e("record","prepare");
+//        return true;
+//    }
+//
+//
+//
+//    class MediaPrepareTask extends AsyncTask<Void, Void, Boolean> {
+//
+//        @Override
+//        protected Boolean doInBackground(Void... voids) {
+//            // initialize video camera
+//            if (prepareVideoRecorder()) {
+//                // Camera is available and unlocked, MediaRecorder is prepared,
+//                // now you can start recording
+//                Log.e("start","true");
+//
+//
+////                mRecorderSurface = mMediaRecorder.getSurface();
+////                Log.e("sss1",mRecorderSurface.isValid() +"");
+//
+//                mMediaRecorder.start();
+//
+//                isRecording = true;
+//            } else {
+//                // prepare didn't work, release the camera
+//                releaseMediaRecorder();
+//                return false;
+//            }
+//            return true;
+//        }
+//
+//        @Override
+//        protected void onPostExecute(Boolean result) {
+//            Log.e("record","录制结束");
+//        }
+//    }
+//
+//
+//
+//
+//    private void releaseMediaRecorder(){
+//        if (mMediaRecorder != null) {
+//            // clear recorder configuration
+//            mMediaRecorder.reset();
+//            // release the recorder object
+//            mMediaRecorder.release();
+//            mMediaRecorder = null;
+//            // Lock camera for later use i.e taking it back from MediaRecorder.
+//            // MediaRecorder doesn't need it anymore and we will release it if the activity pauses.
+////            mCamera.lock();
+//        }
+//    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
